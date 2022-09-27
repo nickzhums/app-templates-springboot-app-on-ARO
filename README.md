@@ -2,7 +2,7 @@
 ## Description 
 In this sample app template, the PetClinic application (a Spring Boot based app) is containerized and deployed to an Azure RedHat Openshift (ARO) cluster secured by Azure Firewall
 
-## Deploy Spring Boot apps using Azure Kubernetes Service and Azure Services:
+## Deploy Spring Boot apps using Azure Red Hat Openshift (ARO) and Azure Services:
 
 --
 Tech stack:
