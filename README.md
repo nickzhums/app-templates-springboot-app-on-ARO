@@ -1,6 +1,6 @@
 # Spring Boot PetClinic Application Deployed to Azure Kubernetes Service (AKS)
 ## Description 
-In this sample app template, the PetClinic application (a Spring Boot based app) is containerized and deployed to a AKS cluster secured by Azure Firewall
+In this sample app template, the PetClinic application (a Spring Boot based app) is containerized and deployed to an Azure RedHat Openshift (ARO) cluster secured by Azure Firewall
 
 ## Deploy Spring Boot apps using Azure Kubernetes Service and Azure Services:
 
@@ -10,7 +10,7 @@ Tech stack:
 - Azure 
 - Azure PostgreSQL DB
 - Azure Container Registry (ACR)
-- Azure Red Hat Openshift (ARO) CLuster
+- Azure Red Hat Openshift (ARO) Cluster
 - Azure Infra (Hub & Spoke Toppology)
 - Azure Infra (VNet Peering)
 - Azure User Defined Routing (UDR)
@@ -34,7 +34,7 @@ This is a quickstart template. It deploys the following:
   * Create the spring-petclinic- build with Maven
   * Create an Azure Container Registry
   * Push your app to the container registry
-  * Create an Azure Redhat Openshift Cluster
+  * Create an Azure Redhat Openshift (ARO) Cluster
   * Deploy the image to your ARO cluster
   * Verify your container image
 
