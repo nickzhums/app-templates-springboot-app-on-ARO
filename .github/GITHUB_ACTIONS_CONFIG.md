@@ -57,7 +57,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 | `aadClientSecret` | The client secret of the service principal for the Azure AD client application, as a secure string. | |
 | `rpObjectId` | The object ID (a GUID) of the resource provider service principal. | |
 | `Azure_Credentials` | The JSON that is provided when you create a service principal. | |
-| `Azure_Subscriptionr` | The Subscription ID of the resource provider service principal. | |
+| `Azure_Subscription` | The Subscription ID of the resource provider service principal. | |
 
 ### Azure Protal Permmision Configuration
 
