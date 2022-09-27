@@ -1,4 +1,4 @@
-# Spring Boot PetClinic Application Deployed to Azure Kubernetes Service (AKS)
+# Spring Boot PetClinic Application Deployed to Azure Red Hat Openshift (ARO)
 ## Description 
 In this sample app template, the PetClinic application (a Spring Boot based app) is containerized and deployed to an Azure RedHat Openshift (ARO) cluster secured by Azure Firewall
 
