@@ -1,0 +1,316 @@
+# This workflow performs the following:
+# - Database configuration
+# - Provisioning Azure Infra with BICEP  
+# - Create the spring-petclinic-ARO App on Docker
+# - Create an Azure Container Registry 
+# - Push your app image to the Container registry
+# - Create an ARO Cluster
+# - Deploy the image to your ARO Cluster
+# - Verify your container image
+# - Test 2
+
+# Secrets required to be in place:
+# - AZURE_CREDENTIALS
+# - AZURE_SUBSCRIPTION
+# - AAD_CLIENT_ID
+# - AAD_CLIENT_SECRET
+# - AAD_OBJECT_ID
+# - ARO_SP_OB_ID 
+# - PULL_SECRET
+# - ClusterRG ="/subscriptions/{subscription ID}/resourceGroups/petclinic-arospoke-westus"
+# - *** NOTE *** :  Remember to set the Location variable and the ClusterRG Location string in the "aro.parameters.json" File to match the Location Enviroment Variable. 
+
+name: ARO Cluster with Enterprise Networking Architecture Deployment
+
+on:
+  # Triggers the workflow on push events on the main branch
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '*.md'
+      - '*.png'
+
+env:
+  LOCATION: 'westus'
+  HUB_VNET: 'hub-vnet'
+  HUB_RG: 'petclinic-hub-eastus'
+  SPOKE_RG: 'petclinic-spoke-eastus'
+  SPOKE_VNET: 'spoke-vnet'
+  FW_PRIVATE_IP: '10.0.0.4'
+  ROUTE_TABLE_NAME: 'aro-udr'
+  CLUSTER_NAME: 'arospoke'
+  JUMPBOX_ADMIN_USER: 'aroadmin'
+  JUMPBOX_ADMIN_PWD: 'aroadmin123**'
+
+jobs: 
+  hub_networking:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        environment: 'AzureCloud'
+
+    - name: Azure CLI -Deploy Bicep Files
+      uses: Azure/CLI@v1
+      with:
+        inlineScript: |
+          #!/bin/bash
+          az group create -l eastus -n ${{ env.HUB_RG }}
+          az group create -l eastus -n ${{ env.SPOKE_RG }}
+          az provider register --namespace 'Microsoft.RedHatOpenShift' --wait
+          az provider register --namespace 'Microsoft.Compute' --wait
+          az provider register --namespace 'Microsoft.Storage' --wait
+          az provider register --namespace 'Microsoft.Authorization' --wait
+          az provider register --namespace "Microsoft.Network" --wait
+          az provider register --namespace "Microsoft.ContainerRegistry" --wait
+          az provider register --namespace "Microsoft.ContainerService" --wait
+          az provider register --namespace "Microsoft.KeyVault" --wait
+          az provider register --namespace "Microsoft.Solutions" --wait
+
+    - name: hub networking
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.HUB_RG }}
+        template: ./infra/aro-bicep/modules/hub_network.bicep
+        parameters: >
+          ./infra/aro-bicep/action_params/hub_network.parameters.json
+          location="${{ env.LOCATION }}"
+          hubVnetName="${{ env.HUB_VNET }}"
+        deploymentName: hub-networking-github-actions
+
+  deploy_firewall:
+    needs: hub_networking
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: deploy_jumpbox
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.HUB_RG }}
+        template: ./infra/aro-bicep/modules/firewall.bicep
+        parameters: >
+          ./infra/aro-bicep/action_params/firewall.parameters.json
+          location="${{ env.LOCATION }}"
+          hubVnetName="${{ env.HUB_VNET }}"
+          fwPrivateIP="${{ env.FW_PRIVATE_IP }}"
+        deploymentName: firewall-github-actions
+
+  user_defined_routing:
+    needs: deploy_firewall
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: create_route
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.SPOKE_RG }}
+        template: ./infra/aro-bicep/modules/routing_table.bicep
+        parameters: >
+          ./infra/aro-bicep/action_params/routing.parameters.json
+          location="${{ env.LOCATION }}"
+          fwPrivateIP="${{ env.FW_PRIVATE_IP }}"
+          routeTableName="${{ env.ROUTE_TABLE_NAME }}"
+        deploymentName: udr-github-actions
+    
+  spoke_networking:
+    needs: user_defined_routing
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: spoke networking
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.SPOKE_RG }}
+        template: ./infra/aro-bicep/modules/spoke_network.bicep
+        parameters: >
+          ./infra/aro-bicep/action_params/spoke_networking.parameters.json
+          spoke_rg="${{ env.SPOKE_RG }}"
+          location="${{ env.LOCATION }}"
+          spokeVnetName="${{ env.SPOKE_VNET }}"
+          routeTableName="${{ env.ROUTE_TABLE_NAME }}"
+        deploymentName: spoke-networking-github-actions
+
+  setup_peering:
+    needs: [hub_networking, spoke_networking]
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: hub_peering
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.HUB_RG }}
+        template: ./infra/aro-bicep/modules/peering.bicep
+        parameters: >
+          localVnetName="${{ env.HUB_VNET }}"
+          remoteVnetName="${{ env.SPOKE_VNET }}"
+          rgToPeer="${{ env.SPOKE_RG }}"
+        deploymentName: hub-peering-github-actions
+
+    - name: spoke_peering
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.SPOKE_RG }}
+        template: ./infra/aro-bicep/modules/peering.bicep
+        parameters: >
+          localVnetName="${{ env.SPOKE_VNET }}" 
+          remoteVnetName="${{ env.HUB_VNET }}" 
+          rgToPeer="${{ env.HUB_RG }}"
+        deploymentName: spoke-peering-github-actions
+
+  deploy_aro: 
+    needs: spoke_networking
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: arospoke
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.SPOKE_RG }}
+        template: ./infra/aro-bicep/modules/aro_cluster.bicep
+        parameters: >
+          ./infra/aro-bicep/action_params/aro.parameters.json 
+          clusterName="${{ env.CLUSTER_NAME }}"
+          location="${{ env.LOCATION }}"
+          aadClientId="${{ secrets.AAD_CLIENT_ID }}"
+          aadClientSecret="${{ secrets.AAD_CLIENT_SECRET }}"
+          aadObjectId="${{ secrets.AAD_OBJECT_ID }}"
+          rpObjectId="${{ secrets.ARO_SP_OB_ID }}"
+          spokeVnetName="${{ env.SPOKE_VNET }}"
+          addSpRoleAssignment='no'
+          clusterRG="/subscriptions/${{ secrets.AZURE_SUBSCRIPTION }}/resourceGroups/petclinic-arospoke-westus"
+          pullSecret="${{ secrets.PULL-SECRET }}"
+        deploymentName: aro-github-actions
+
+  deploy_bastion:
+    needs: hub_networking
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: deploy_bastion
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+        resourceGroupName: ${{ env.HUB_RG }}
+        template: ./infra/aro-bicep/modules/bastion.bicep
+        parameters: >
+          ./infra/aro-bicep/action_params/bastion.parameters.json
+          location="${{ env.LOCATION }}"
+          hubVnetName="${{ env.HUB_VNET }}"
+        deploymentName: bastion-github-actions
+ 
+  build_java_application:
+    needs: deploy_aro
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build Java Application
+      uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+         java-version: '11'
+         distribution: 'adopt'
+    - name: Build with Maven, compile and build the Docker image
+      run: |
+        mvn spring-boot:build-image
+        docker tag docker.io/library/spring-petclinic:2.7.0-SNAPSHOT petclinicaroacraz.azurecr.io/petclinic
+       
+  tag_and_push_image:
+    needs: build_java_application
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Azure Powershell Cli - ACR create, ACR Login, Tag Image, Push Image, Expose Service
+      uses: azure/powershell@v1
+      with:
+         inlineScript: |
+          #!/bin/bash
+          az acr create -n petclinicaroacraz -g ${{ env.SPOKE_RG }} --sku Standard
+          az acr login -n petclinicaroacraz
+          docker push petclinicaroacraz.azurecr.io/petclinic
+          az aro list-credentials --name arospoke --resource-group ${{ env.SPOKE_RG }}
+          az aro update --name arospoke --resource-group ${{ env.SPOKE_RG }} --attach-acr petclinicaroacraz
+          kubectl run petclinicaro --image petclinicaroacraz.azurecr.io/petclinic
+          kubectl expose pod petclinicaro --type LoadBalancer --port=80 --target-port 8080
+          kubectl get pods -A
+         azPSVersion: "latest"
+  
+  get_ip_address:
+    needs: tag_and_push_image
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@main
+    - name: azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+   # Azure Powershell Cli - Get deployment IP Address 
+    - name: Azure Powershell Cli - Get deployment IP Address 
+      uses: azure/powershell@v1
+      with:
+         inlineScript: | 
+          kubectl get service petclinicaro
+         azPSVersion: "latest"
