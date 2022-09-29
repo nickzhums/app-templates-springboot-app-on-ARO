@@ -226,7 +226,7 @@ jobs:
         deploymentName: acr-github-actions
 
   deploy_aro: 
-    needs: spoke_networking
+    needs: deploy_acr
     runs-on: ubuntu-latest
     steps:
     - name: checkout code
