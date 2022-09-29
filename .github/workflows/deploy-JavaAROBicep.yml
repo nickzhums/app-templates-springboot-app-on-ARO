@@ -7,7 +7,6 @@
 # - Create an ARO Cluster
 # - Deploy the image to your ARO Cluster
 # - Verify your container image
-# - Test 2
 
 # Secrets required to be in place:
 # - AZURE_CREDENTIALS
