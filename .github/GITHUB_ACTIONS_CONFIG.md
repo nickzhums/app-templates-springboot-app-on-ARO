@@ -29,7 +29,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
    + At the top of the page, click New repository secret
    + Provide the secret name as AZURE_CREDENTIALS
    + Add the output JSON as secret value
-   + Then repeat this pocess and create a Secret for each of the following Iteam with their corresponding values:  
+   + Then repeat this pocess and create a Secret for each of the following item with their corresponding values:  
 
     + PULL SECRET (+ Go to your [Red Hat OpenShift cluster manager portal](https://console.redhat.com/openshift/install/azure/aro-provisioned) and select Download pull secret)
 
@@ -45,7 +45,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 
     + AZURE_SUBSCRIPTION
   
-### Rewuired Parameter Definitions 
+### Required Parameter Definitions 
 
 3. The following  parameters are required.
 
@@ -59,7 +59,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 | `Azure_Credentials` | The JSON that is provided when you create a service principal. | |
 | `Azure_Subscription` | The Subscription ID of the resource provider service principal. | |
 
-### Azure Protal Permmision Configuration
+### Azure Protal Permission Configuration
 
 4. Verify your Azure Permissions ( You must have Contributor and User Access Administrator roles)
       
@@ -71,7 +71,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 
   + Type in the name of your Service Principle, check the access levels.
 
-  + Sinc you just created it, the Service Principal will have Contributor Access.
+  + Sinc you just created it, the Service Principle will have Contributor Access.
 
   + In the Top Menu...Click "+Add", and select Ass Role Assignment from the drop down menu...
 
@@ -85,7 +85,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 
   + On th Menbers Page...click "+Select Members"
 
-  + On the Select Members menu..type the name of the "Service Pricicpal" in the select box
+  + On the Select Members menu..type the name of the "Service Pricicple" in the select box
 
   + At the bottom of the menu, click Select
 
