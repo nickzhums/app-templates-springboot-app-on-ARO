@@ -29,39 +29,64 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
    + At the top of the page, click New repository secret
    + Provide the secret name as AZURE_CREDENTIALS
    + Add the output JSON as secret value
-   + Then repeat this pocess and create a Secret for each of the following item with their corresponding values:  
+   + Then repeat this pocess and create a Secret for each of the following Iteam with their corresponding values:  
 
     + PULL SECRET (+ Go to your [Red Hat OpenShift cluster manager portal](https://console.redhat.com/openshift/install/azure/aro-provisioned) and select Download pull secret)
 
-    + AAD_CLIENT_ID 
+    + AAD_CLIENT_ID - Located in the Service Principal
 
-    + AAD_CLIENT_SECRET
+    + AAD_CLIENT_SECRET - Located in the Serivce Principal
 
-    + AAD_OBJECT_ID
+    + AAD_SP_OB_ID - Located in the Service Principal
 
-    + ARO_SP_OB_ID
+    + ARO_CLUSTER_ID - More information on how to attain the Cluster ID is listed in Section 4. 
 
-    + AZURE CREDENTIALS
+    + AZURE CREDENTIALS - Is the Serivce Principal
 
-    + AZURE_SUBSCRIPTION
+    + AZURE_SUBSCRIPTION - Located in the Service Principal
+
+    + Also, make sure that you update the "CLUSTER_RG" String....it needs your Subcription ID!!!!
   
 ### Required Parameter Definitions 
 
 3. The following  parameters are required.
 
-| Property | Description | Valid Options | Default Value |
-|----------|-------------|---------------|---------------|
-| `pullSecret` | The pull secret that you obtained from the Red Hat OpenShift Cluster Manager web site.
-| `aadClientId` | The application ID (a GUID) of an Azure Active Directory (Azure AD) client application. | |
-| `aadObjectId` | The object ID (a GUID) of the service principal for the Azure AD client application. | |
-| `aadClientSecret` | The client secret of the service principal for the Azure AD client application, as a secure string. | |
-| `rpObjectId` | The object ID (a GUID) of the resource provider service principal. | |
-| `Azure_Credentials` | The JSON that is provided when you create a service principal. | |
-| `Azure_Subscription` | The Subscription ID of the resource provider service principal. | |
+| Property | Description | Default Value |
+|----------|-------------|---------------|
+| `pullSecret` | The pull secret that you obtained from the Red Hat OpenShift Cluster Manager web site.| |
+| `aadClientId` | The Service Prinicipal  Client ID  (a GUID) of  the service principal for the Azure AD client application. | AAD_CLIENT_ID |
+| `aadObjectId` | The Service Prinicipal Object ID (a GUID) of the service principal for the Azure AD client application. | AAD_SP_OB_ID |
+| `aadClientSecret` | The client secret of the service principal for the Azure AD client application, as a secure string. | AAD_CLIENT_SECRET |
+| `rpObjectId` | The object ID of the ARO Cluster. | ARO_CLUSTER_ID |
+| `Azure_Credentials` | The JSON that is provided when you create a Service Principal. | |
+| `Azure_Subscription` | The Subscription ID of the resource provider Service Principal. | |
 
-### Azure Protal Permission Configuration
+### ARO Cluster ID Location
+4.  The best way to attain the ARO Cluster ID is g to the Azure portal and deploy an ARO Cluster via the portal.  
 
-4. Verify your Azure Permissions ( You must have Contributor and User Access Administrator roles)
+  + Goto the Azure Home Page and view all of the services.
+
+  + Select Azure Redhat Openshift (ARO) ***Note** - If you dont see Azure RedHat Openshift listed, you can type the name into the serach bar at the top of the page and it will locate it for you. 
+
+  + Click "+Create" - located in the upper left hand corner.
+
+  + The Azure Portal will walk you through 5 Screens. (Basics, Authenication, Networking, Tags, Review + Create)
+
+  + Follow the required guideance for each screen. 
+
+  + Once you have filled in all of the rreuired information, you will get to the "Review + Create"....Click "Create" -- located on the lower left hand side.  
+
+  + As the Cluster starts to deploy, goto the left hand side and locate the Template and Download a copy.
+
+  + The Azure Portal will open the ARO Template....just scroll down till yuou see the rpObjectId. 
+
+  + The rpObjectId is the ARO_CLUSTER_ID!!!
+
+  + Copy it, and save it as a GitHUb Action Secret. 
+
+### Azure Protal Permmision Configuration
+
+5. Verify your Azure Permissions ( You must have Contributor and User Access Administrator roles)
       
   * Azure Red Hat OpenShift requires roleAssignment/write permission, so make sure  your Azure user account has Microsoft.Authorization/roleAssignments/write permissions, such as User Access Administrator or Owner and Contributor. More info can be found in the documentation for [Azure built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles).
 
@@ -71,7 +96,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 
   + Type in the name of your Service Principle, check the access levels.
 
-  + Sinc you just created it, the Service Principle will have Contributor Access.
+  + Sinc you just created it, the Service Principal will have Contributor Access.
 
   + In the Top Menu...Click "+Add", and select Ass Role Assignment from the drop down menu...
 
@@ -85,7 +110,7 @@ The newly created GitHub repo uses GitHub Actions to deploy Azure resources and 
 
   + On th Menbers Page...click "+Select Members"
 
-  + On the Select Members menu..type the name of the "Service Pricicple" in the select box
+  + On the Select Members menu..type the name of the "Service Pricicpal" in the select box
 
   + At the bottom of the menu, click Select
 
